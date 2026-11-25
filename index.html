@@ -76,7 +76,6 @@
 
         <!-- 主題切換按鈕、快取狀態與回到全部按鈕 -->
         <div class="flex items-center gap-2">
-          <!-- Light / Dark Mode 切換大按鈕 -->
           <button id="themeToggleBtn" onclick="toggleTheme()" aria-label="切換淺色或深色模式"
                   class="min-h-[42px] px-3 py-1.5 rounded-2xl bg-amber-100 hover:bg-amber-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 border-2 border-amber-300 dark:border-slate-600 text-sm sm:text-base font-extrabold text-amber-900 dark:text-amber-300 shadow-sm transition flex items-center gap-1.5">
             <span id="themeIcon" class="text-lg">☀️</span>
@@ -97,7 +96,7 @@
         </div>
       </div>
 
-      <!-- 第二排：大搜尋框 與 大世代下拉選單（含「全部」） -->
+      <!-- 第二排：大搜尋框 與 大世代下拉選單（與屬性/傳說篩選連動） -->
       <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
         <div class="relative sm:col-span-7 flex items-center">
           <svg class="w-6 h-6 text-slate-400 absolute left-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,10 +129,10 @@
         </div>
       </div>
 
-      <!-- 第三排：自動換行的屬性與「傳說」篩選列（無需左右捲動即可看到全部） -->
+      <!-- 第三排：自動換行的屬性與「傳說」篩選列（與世代選單交集篩選） -->
       <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-0.5" id="typeFilterBar">
         <button data-type="all" class="type-filter-btn active min-h-[38px] sm:min-h-[40px] px-3 sm:px-3.5 py-1 rounded-xl text-xs sm:text-sm font-extrabold bg-red-600 text-white shadow-md active:scale-95 transition">
-          🌟 全部
+          🌟 全部屬性
         </button>
         <button data-type="legendary" class="type-filter-btn min-h-[38px] sm:min-h-[40px] px-3 sm:px-3.5 py-1 rounded-xl text-xs sm:text-sm font-extrabold text-amber-900 dark:text-amber-200 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/70 dark:hover:bg-amber-900/80 border-2 border-amber-400 dark:border-amber-500/70 active:scale-95 transition">
           👑 傳說
@@ -511,6 +510,19 @@
       bug: '蟲', rock: '岩石', ghost: '幽靈', dragon: '龍', dark: '惡', steel: '鋼', fairy: '妖精'
     };
 
+    const GEN_LABELS = {
+      '1-1025': '全部世代',
+      '1-151': '第1世代',
+      '152-251': '第2世代',
+      '252-386': '第3世代',
+      '387-493': '第4世代',
+      '494-649': '第5世代',
+      '650-721': '第6世代',
+      '722-809': '第7世代',
+      '810-905': '第8世代',
+      '906-1025': '第9世代'
+    };
+
     // 全國圖鑑 #001-#1025 傳說與幻之寶可夢編號集合 (Legendary & Mythical)
     const LEGENDARY_IDS = new Set([
       144, 145, 146, 150, 151,
@@ -573,11 +585,14 @@
 
     /**
      * ============================================================================
-     * 3. 應用程式狀態與初始化
+     * 3. 應用程式狀態與初始化（代數下拉選單 + 屬性/傳說篩選 + 搜尋框 交集運作）
      * ============================================================================
      */
-    let currentList = [];
-    let activeType = 'all';
+    let activeGen = '1-151';
+    let activeType = 'all'; // 'all' | 'legendary' | typeName
+    let allNationalList = null; // 儲存完整 #1-#1025 列表供快速交集運算
+    let typeIdSets = {}; // 快取各屬性的寶可夢 ID Set
+    let currentFilteredPool = [];
     let currentModalPokemon = null;
     let isShiny = false;
     let currentTabName = 'overview';
@@ -587,13 +602,13 @@
       initTheme();
       initBackToTop();
       initTypeButtons();
-      await loadGeneration('1-151');
+      await updateCombinedResults();
 
       document.getElementById('searchInput').addEventListener('input', handleSearchInput);
-      document.getElementById('genSelect').addEventListener('change', (e) => {
-        activeType = 'all';
-        updateTypeButtonStyles();
-        loadGeneration(e.target.value);
+      document.getElementById('genSelect').addEventListener('change', async (e) => {
+        activeGen = e.target.value;
+        renderLimit = 60;
+        await updateCombinedResults();
       });
     }
 
@@ -604,19 +619,19 @@
         btn.dataset.type = en;
         btn.className = `type-filter-btn min-h-[38px] sm:min-h-[40px] px-3 sm:px-3.5 py-1 rounded-xl text-xs sm:text-sm font-extrabold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 border-2 border-slate-300 dark:border-slate-600 transition`;
         btn.textContent = zh;
-        btn.onclick = () => filterByType(en);
+        btn.onclick = () => selectTypeFilter(en);
         bar.appendChild(btn);
       });
 
-      bar.querySelector('[data-type="all"]').onclick = () => {
-        activeType = 'all';
-        updateTypeButtonStyles();
-        loadGeneration(document.getElementById('genSelect').value);
-      };
+      bar.querySelector('[data-type="all"]').onclick = () => selectTypeFilter('all');
+      bar.querySelector('[data-type="legendary"]').onclick = () => selectTypeFilter('legendary');
+    }
 
-      bar.querySelector('[data-type="legendary"]').onclick = () => {
-        filterByLegendary();
-      };
+    async function selectTypeFilter(typeVal) {
+      activeType = typeVal;
+      renderLimit = 60;
+      updateTypeButtonStyles();
+      await updateCombinedResults();
     }
 
     function updateTypeButtonStyles() {
@@ -648,88 +663,77 @@
       applySearchAndRender();
     }
 
-    function resetFilters() {
+    async function resetFilters() {
       document.getElementById('searchInput').value = '';
       document.getElementById('clearSearchBtn').classList.add('hidden');
+      activeGen = '1-151';
       document.getElementById('genSelect').value = '1-151';
       activeType = 'all';
       renderLimit = 60;
       updateTypeButtonStyles();
-      loadGeneration('1-151');
+      await updateCombinedResults();
     }
 
     function clearAppCache() {
       cache.clear();
+      typeIdSets = {};
+      allNationalList = null;
       alert('已清除所有本地快取資料！');
     }
 
     /**
      * ============================================================================
-     * 4. 列表載入與篩選（全部世代 / 單一世代 / 18屬性 / 傳說寶可夢）
+     * 4. 核心聯合篩選邏輯：代數 Dropdown ∩ 屬性/傳說 Filter ∩ 關鍵字搜尋
      * ============================================================================
      */
-    async function loadGeneration(rangeStr) {
-      const [start, end] = rangeStr.split('-').map(Number);
-      const offset = start - 1;
-      const limit = end - start + 1;
-      renderLimit = 60;
+    async function ensureNationalList() {
+      if (allNationalList) return allNationalList;
+      const data = await cache.fetchJson(`${API_BASE}/pokemon?offset=0&limit=1025`);
+      allNationalList = data.results.map(item => ({
+        id: extractIdFromUrl(item.url),
+        name: item.name
+      }));
+      return allNationalList;
+    }
 
-      setStatus(`正在準備 #${String(start).padStart(3, '0')} ~ #${String(end).padStart(3, '0')} 寶可夢...`);
-      renderSkeletons(10);
+    async function ensureTypeSet(typeName) {
+      if (typeIdSets[typeName]) return typeIdSets[typeName];
+      const typeData = await cache.fetchJson(`${API_BASE}/type/${typeName}`);
+      const idSet = new Set(
+        typeData.pokemon
+          .map(p => extractIdFromUrl(p.pokemon.url))
+          .filter(id => id <= 1025)
+      );
+      typeIdSets[typeName] = idSet;
+      return idSet;
+    }
+
+    async function updateCombinedResults() {
+      const [start, end] = activeGen.split('-').map(Number);
+      setStatus('正在篩選寶可夢...');
+      renderSkeletons(8);
 
       try {
-        const data = await cache.fetchJson(`${API_BASE}/pokemon?offset=${offset}&limit=${limit}`);
-        currentList = data.results.map(item => ({
-          id: extractIdFromUrl(item.url),
-          name: item.name
-        }));
+        // 1. 取得完整全國寶可夢基礎清單（已快取後為瞬間讀取）
+        const baseList = await ensureNationalList();
+
+        // 2. 依「代數 Dropdown」範圍篩選
+        let pool = baseList.filter(p => p.id >= start && p.id <= end);
+
+        // 3. 依「屬性 / 傳說 Filter」交集篩選
+        if (activeType === 'legendary') {
+          pool = pool.filter(p => LEGENDARY_IDS.has(p.id));
+        } else if (activeType !== 'all') {
+          const allowedIds = await ensureTypeSet(activeType);
+          pool = pool.filter(p => allowedIds.has(p.id));
+        }
+
+        currentFilteredPool = pool;
+
+        // 4. 依「搜尋框關鍵字」再次篩選並渲染
         applySearchAndRender();
       } catch (err) {
         setStatus(`載入失敗：${err.message}`);
-      }
-    }
-
-    async function filterByType(typeName) {
-      activeType = typeName;
-      renderLimit = 60;
-      updateTypeButtonStyles();
-      setStatus(`正在尋找【${TYPE_ZH[typeName]}】屬性的寶可夢...`);
-      renderSkeletons(10);
-
-      try {
-        const typeData = await cache.fetchJson(`${API_BASE}/type/${typeName}`);
-        currentList = typeData.pokemon
-          .map(p => ({
-            id: extractIdFromUrl(p.pokemon.url),
-            name: p.pokemon.name
-          }))
-          .filter(p => p.id <= 1025);
-
-        applySearchAndRender();
-      } catch (err) {
-        setStatus(`屬性篩選失敗：${err.message}`);
-      }
-    }
-
-    async function filterByLegendary() {
-      activeType = 'legendary';
-      renderLimit = 120;
-      updateTypeButtonStyles();
-      setStatus('正在召喚所有【👑 傳說與幻之寶可夢】...');
-      renderSkeletons(10);
-
-      try {
-        const allData = await cache.fetchJson(`${API_BASE}/pokemon?offset=0&limit=1025`);
-        currentList = allData.results
-          .map(item => ({
-            id: extractIdFromUrl(item.url),
-            name: item.name
-          }))
-          .filter(p => LEGENDARY_IDS.has(p.id));
-
-        applySearchAndRender();
-      } catch (err) {
-        setStatus(`傳說篩選失敗：${err.message}`);
       }
     }
 
@@ -754,25 +758,33 @@
       const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
       const hintBox = document.getElementById('directSearchHint');
 
-      let filtered = currentList;
+      let finalResults = currentFilteredPool;
       if (keyword) {
-        filtered = currentList.filter(p => {
+        finalResults = currentFilteredPool.filter(p => {
           const idStr = String(p.id);
           const zhName = (ZH_NAME_MAP[p.id] || '').toLowerCase();
           return idStr === keyword || idStr.padStart(3, '0').includes(keyword) || p.name.includes(keyword) || zhName.includes(keyword);
         });
       }
 
-      if (keyword && filtered.length === 0) {
+      if (keyword && finalResults.length === 0) {
         hintBox.classList.remove('hidden');
         document.getElementById('directSearchBtn').onclick = () => openPokemonDetail(keyword);
       } else {
         hintBox.classList.add('hidden');
       }
 
-      const labelPrefix = activeType === 'legendary' ? '👑 傳說與幻之寶可夢：' : '';
-      setStatus(`${labelPrefix}一共有 ${filtered.length} 隻寶可夢`);
-      renderPokemonGrid(filtered);
+      // 組合清楚的狀態提示標籤（顯示當前代數 + 屬性/傳說條件）
+      const genName = GEN_LABELS[activeGen] || '';
+      let filterTag = '';
+      if (activeType === 'legendary') {
+        filterTag = ' ＋ 👑 傳說';
+      } else if (activeType !== 'all') {
+        filterTag = ` ＋ 【${TYPE_ZH[activeType]}】屬性`;
+      }
+
+      setStatus(`篩選條件：${genName}${filterTag} ➔ 共找到 ${finalResults.length} 隻寶可夢`);
+      renderPokemonGrid(finalResults);
     }
 
     function setStatus(text) {
@@ -793,7 +805,12 @@
     function renderPokemonGrid(list) {
       const grid = document.getElementById('pokemonGrid');
       if (list.length === 0) {
-        grid.innerHTML = `<div class="col-span-full text-center py-14 text-lg font-extrabold text-slate-600 dark:text-slate-300">找不到符合的寶可夢喔，試試看別的名字吧！</div>`;
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-14 px-4">
+            <p class="text-lg sm:text-xl font-black text-slate-700 dark:text-slate-200 mb-2">在這個條件組合下找不到寶可夢喔！</p>
+            <p class="text-sm sm:text-base font-bold text-slate-500 dark:text-slate-400">試試看把代數切換成「🌍 全部寶可夢」，或點選其他屬性吧！</p>
+          </div>
+        `;
         return;
       }
 
