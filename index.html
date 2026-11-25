@@ -1,17 +1,23 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>Pokédex 寶可夢圖鑑</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@500;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&family=Outfit:wght@600;700;800&display=swap');
 
     body {
       font-family: 'Outfit', 'Noto Sans TC', sans-serif;
-      background-color: #0f172a;
-      color: #f8fafc;
+      font-size: 16px;
+      -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     /* 18 種屬性專屬配色 */
@@ -36,245 +42,272 @@
 
     /* 自訂捲軸 */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #1e293b; }
-    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    html.dark ::-webkit-scrollbar-track { background: #1e293b; }
+    html.dark ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    html:not(.dark) ::-webkit-scrollbar-track { background: #e2e8f0; }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     .pokeball-bg {
-      background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.08) 18%, transparent 19%, transparent 26%, rgba(255,255,255,0.06) 27%, rgba(255,255,255,0.06) 65%, transparent 66%);
+      background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.12) 18%, transparent 19%, transparent 26%, rgba(255,255,255,0.08) 27%, rgba(255,255,255,0.08) 65%, transparent 66%);
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-50">
 
-  <!-- 頂部導覽列 -->
-  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-      <!-- Logo -->
-      <div class="flex items-center gap-3 cursor-pointer" onclick="resetFilters()">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-b from-red-500 to-red-600 border-2 border-slate-200 flex items-center justify-center shadow-md relative overflow-hidden">
-          <div class="w-full h-1 bg-slate-900 absolute"></div>
-          <div class="w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-900 z-10"></div>
+  <!-- 頂部導覽列：加大觸控區與文字 -->
+  <header class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b-2 border-slate-200 dark:border-slate-800 shadow-md dark:shadow-xl transition-colors">
+    <div class="max-w-7xl mx-auto px-3 sm:px-5 py-3.5 flex flex-col gap-3">
+      
+      <!-- 第一排：大 Logo 與 主題切換 / 重設 / 快取按鈕 -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-3 cursor-pointer active:scale-95 transition" onclick="resetFilters()">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-b from-red-500 to-red-600 border-2 border-slate-800 dark:border-white flex items-center justify-center shadow-lg relative overflow-hidden shrink-0">
+            <div class="w-full h-1.5 bg-slate-900 absolute"></div>
+            <div class="w-4 h-4 rounded-full bg-white border-2 border-slate-900 z-10"></div>
+          </div>
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-black tracking-wide bg-gradient-to-r from-red-600 via-amber-500 to-sky-600 dark:from-red-400 dark:via-amber-300 dark:to-sky-400 bg-clip-text text-transparent">
+              寶可夢圖鑑
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-bold">點一點卡片看介紹！</p>
+          </div>
         </div>
-        <div>
-          <h1 class="text-xl font-extrabold tracking-wide bg-gradient-to-r from-red-400 via-amber-300 to-sky-400 bg-clip-text text-transparent">
-            POKÉDEX 圖鑑
-          </h1>
-          <p class="text-[11px] text-slate-400">Powered by PokeAPI v2 + 雙層智慧快取</p>
+
+        <!-- 主題切換按鈕、快取狀態與回到全部按鈕 -->
+        <div class="flex items-center gap-2">
+          <!-- Light / Dark Mode 切換大按鈕 -->
+          <button id="themeToggleBtn" onclick="toggleTheme()" aria-label="切換淺色或深色模式"
+                  class="min-h-[44px] px-3.5 py-2 rounded-2xl bg-amber-100 hover:bg-amber-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 border-2 border-amber-300 dark:border-slate-600 text-sm sm:text-base font-extrabold text-amber-900 dark:text-amber-300 shadow-sm transition flex items-center gap-1.5">
+            <span id="themeIcon" class="text-lg">☀️</span>
+            <span id="themeLabel">淺色模式</span>
+          </button>
+
+          <button onclick="resetFilters()" class="min-h-[44px] px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 border-2 border-slate-300 dark:border-slate-600 text-sm font-extrabold text-slate-700 dark:text-slate-200 transition">
+            🔄 重設
+          </button>
+
+          <div class="hidden md:flex items-center gap-2 bg-slate-100 dark:bg-slate-800/90 border-2 border-slate-300 dark:border-slate-700 px-3.5 py-2 rounded-2xl text-sm">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
+            <span class="text-slate-700 dark:text-slate-200 font-bold">已存: <strong id="cacheCount" class="text-emerald-600 dark:text-emerald-400">0</strong></span>
+            <button onclick="clearAppCache()" title="清除本地快取" class="ml-1 px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-red-600 hover:text-white transition text-xs font-extrabold">
+              清除
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- 搜尋與世代切換 -->
-      <div class="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl justify-end">
-        <div class="relative flex-1 min-w-[200px]">
+      <!-- 第二排：大搜尋框 與 大世代下拉選單 -->
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+        <div class="relative sm:col-span-7 flex items-center">
+          <svg class="w-6 h-6 text-slate-400 absolute left-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
           <input
             id="searchInput"
             type="text"
-            placeholder="搜尋編號或名稱 (如 25, pikachu, 皮卡丘)..."
-            class="w-full bg-slate-800 border border-slate-700 text-sm rounded-xl pl-9 pr-4 py-2 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-red-500 transition"
+            placeholder="輸入名字或號碼 (例如: 皮卡丘, 25)"
+            class="w-full min-h-[50px] bg-slate-50 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-base sm:text-lg font-bold rounded-2xl pl-12 pr-12 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-red-500 dark:focus:border-amber-400 transition"
           />
-          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
+          <button id="clearSearchBtn" onclick="clearSearchInput()" class="hidden absolute right-3 w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-800 dark:text-white font-bold text-base flex items-center justify-center">
+            ✕
+          </button>
         </div>
 
-        <select id="genSelect" class="bg-slate-800 border border-slate-700 text-sm rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-red-500">
-          <option value="1-151">第一世代 (關都 #001-#151)</option>
-          <option value="152-251">第二世代 (城都 #152-#251)</option>
-          <option value="252-386">第三世代 (豐緣 #252-#386)</option>
-          <option value="387-493">第四世代 (神奧 #387-#493)</option>
-          <option value="494-649">第五世代 (合眾 #494-#649)</option>
-          <option value="650-721">第六世代 (卡洛斯 #650-#721)</option>
-          <option value="722-809">第七世代 (阿羅拉 #722-#809)</option>
-          <option value="810-905">第八世代 (伽勒爾 #810-#905)</option>
-          <option value="906-1025">第九世代 (帕底亞 #906-#1025)</option>
-        </select>
+        <div class="sm:col-span-5">
+          <select id="genSelect" class="w-full min-h-[50px] bg-slate-50 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-base sm:text-lg font-bold rounded-2xl px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-red-500 dark:focus:border-amber-400">
+            <option value="1-151">第1世代：關都 (#001-#151)</option>
+            <option value="152-251">第2世代：城都 (#152-#251)</option>
+            <option value="252-386">第3世代：豐緣 (#252-#386)</option>
+            <option value="387-493">第4世代：神奧 (#387-#493)</option>
+            <option value="494-649">第5世代：合眾 (#494-#649)</option>
+            <option value="650-721">第6世代：卡洛斯 (#650-#721)</option>
+            <option value="722-809">第7世代：阿羅拉 (#722-#809)</option>
+            <option value="810-905">第8世代：伽勒爾 (#810-#905)</option>
+            <option value="906-1025">第9世代：帕底亞 (#906-#1025)</option>
+          </select>
+        </div>
       </div>
 
-      <!-- 快取狀態指示器 -->
-      <div class="flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-slate-300">快取筆數: <strong id="cacheCount" class="text-emerald-400">0</strong></span>
-        <button onclick="clearAppCache()" title="清除本地快取" class="ml-1 text-slate-400 hover:text-red-400 transition underline">
-          清除
+      <!-- 第三排：大顆好按的屬性篩選列 -->
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1" id="typeFilterBar">
+        <button data-type="all" class="type-filter-btn active min-h-[42px] px-4 py-1.5 rounded-2xl text-sm sm:text-base font-extrabold bg-red-600 text-white shadow-md shrink-0 active:scale-95 transition">
+          🌟 全部屬性
         </button>
       </div>
-    </div>
-
-    <!-- 屬性篩選列 (/api/v2/type/{id}) -->
-    <div class="max-w-7xl mx-auto px-4 pb-3 flex items-center gap-1.5 overflow-x-auto no-scrollbar" id="typeFilterBar">
-      <button data-type="all" class="type-filter-btn active px-3 py-1 rounded-full text-xs font-bold bg-red-600 text-white shadow shrink-0 transition">
-        全部屬性
-      </button>
     </div>
   </header>
 
-  <!-- 主內容區：寶可夢卡片網格 -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
-    <div class="flex items-center justify-between mb-4">
-      <p id="statusText" class="text-sm text-slate-400">載入圖鑑資料中...</p>
-      <div id="directSearchHint" class="hidden">
-        <button id="directSearchBtn" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition">
-          直接向 PokeAPI 查詢此名稱/編號
+  <!-- 主內容區：大卡片網格 -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 py-5">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <p id="statusText" class="text-base sm:text-lg font-extrabold text-slate-700 dark:text-slate-300">載入圖鑑資料中...</p>
+      <div id="directSearchHint" class="hidden w-full sm:w-auto">
+        <button id="directSearchBtn" class="w-full sm:w-auto min-h-[48px] text-base font-bold bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white px-5 py-2.5 rounded-2xl shadow-lg transition">
+          🔍 直接搜尋這隻寶可夢！
         </button>
       </div>
     </div>
 
-    <!-- 卡片網格 -->
-    <div id="pokemonGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+    <!-- 手機 2 欄、平板 3 欄、電腦 4-5 欄 -->
+    <div id="pokemonGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-5">
       <!-- 動態生成卡片 -->
     </div>
   </main>
 
-  <!-- 寶可夢詳細資料彈窗 (Modal) -->
-  <div id="detailModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl my-auto">
+  <!-- 寶可夢詳細資料彈窗 (Modal)：支援 Light & Dark Mode -->
+  <div id="detailModal" class="fixed inset-0 z-50 hidden bg-slate-900/75 dark:bg-slate-950/85 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 border-t-2 sm:border-2 border-slate-300 dark:border-slate-700 rounded-t-3xl sm:rounded-3xl w-full max-w-4xl h-[94vh] sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
       
-      <!-- Modal 頂部標題與操作 -->
-      <div id="modalHeader" class="p-5 sm:p-6 pokeball-bg relative flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800">
-        <button onclick="closeModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-900/60 hover:bg-slate-900 text-white flex items-center justify-center transition">
+      <!-- Modal 頂部標題與大關閉按鈕 -->
+      <div id="modalHeader" class="p-4 sm:p-6 pokeball-bg relative flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <button onclick="closeModal()" aria-label="關閉視窗" class="absolute top-3.5 right-3.5 w-12 h-12 rounded-full bg-slate-950/75 hover:bg-slate-950 active:scale-90 text-white text-xl font-black flex items-center justify-center border-2 border-white/30 shadow-lg transition z-20">
           ✕
         </button>
 
-        <div class="flex flex-col sm:flex-row items-center gap-5 w-full">
-          <!-- 圖片與色違切換 -->
-          <div class="relative group">
-            <div class="w-36 h-36 sm:w-44 sm:h-44 bg-slate-900/40 rounded-2xl p-2 flex items-center justify-center backdrop-blur-xs border border-white/10">
-              <img id="modalArtwork" src="" alt="" class="w-full h-full object-contain drop-shadow-xl transition-transform duration-300 group-hover:scale-105" />
+        <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full pt-2 sm:pt-0">
+          <!-- 大圖片與色違切換大按鈕 -->
+          <div class="flex flex-col items-center">
+            <div class="w-36 h-36 sm:w-44 sm:h-44 bg-white/25 dark:bg-slate-950/35 rounded-3xl p-2 flex items-center justify-center border-2 border-white/30 shadow-inner">
+              <img id="modalArtwork" src="" alt="" class="w-full h-full object-contain drop-shadow-2xl transition-transform duration-300" />
             </div>
-            <button id="shinyToggleBtn" onclick="toggleShiny()" class="mt-2 w-full py-1 px-2.5 rounded-lg bg-slate-900/70 hover:bg-slate-900 text-xs font-medium text-amber-300 border border-amber-400/30 flex items-center justify-center gap-1 transition">
-              ✨ 切換色違 (Shiny)
+            <button id="shinyToggleBtn" onclick="toggleShiny()" class="mt-2.5 min-h-[42px] px-4 py-1.5 rounded-2xl bg-slate-950/80 hover:bg-slate-950 active:scale-95 text-sm font-extrabold text-amber-300 border-2 border-amber-400/60 flex items-center justify-center gap-1.5 shadow transition">
+              ✨ 變色版本 (色違)
             </button>
           </div>
 
-          <!-- 名稱、多語系、分類與屬性 -->
+          <!-- 名稱、分類與大屬性標籤 -->
           <div class="text-center sm:text-left flex-1">
-            <div class="flex items-center justify-center sm:justify-start gap-2 mb-1">
-              <span id="modalId" class="text-sm font-extrabold px-2.5 py-0.5 rounded-md bg-slate-950/50 text-slate-200">#000</span>
-              <span id="modalGenera" class="text-xs px-2.5 py-0.5 rounded-md bg-white/15 text-white font-medium">---</span>
+            <div class="flex items-center justify-center sm:justify-start gap-2 mb-1.5">
+              <span id="modalId" class="text-base sm:text-lg font-black px-3 py-0.5 rounded-xl bg-slate-950/60 text-white">#000</span>
+              <span id="modalGenera" class="text-sm sm:text-base px-3 py-0.5 rounded-xl bg-white/25 text-white font-bold">---</span>
             </div>
-            <h2 id="modalNameZh" class="text-2xl sm:text-3xl font-black text-white tracking-tight">載入中...</h2>
-            <p id="modalNameSub" class="text-sm text-white/80 font-medium mt-0.5">English / 日本語</p>
+            <h2 id="modalNameZh" class="text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow">載入中...</h2>
+            <p id="modalNameSub" class="text-base sm:text-lg text-white/95 font-bold mt-0.5">English / 日本語</p>
 
             <!-- 屬性標籤 -->
-            <div id="modalTypes" class="flex items-center justify-center sm:justify-start gap-2 mt-3"></div>
+            <div id="modalTypes" class="flex items-center justify-center sm:justify-start gap-2.5 mt-3"></div>
 
             <!-- 基礎體型數據 -->
-            <div class="grid grid-cols-3 gap-2 mt-4 max-w-sm mx-auto sm:mx-0 bg-slate-950/40 rounded-xl p-2.5 text-center border border-white/10">
+            <div class="grid grid-cols-3 gap-2 mt-4 max-w-md mx-auto sm:mx-0 bg-slate-950/50 rounded-2xl p-3 text-center border border-white/20">
               <div>
-                <p class="text-[11px] text-white/70">身高</p>
-                <p id="modalHeight" class="text-sm font-bold text-white">-- m</p>
+                <p class="text-xs sm:text-sm text-white/85 font-bold">身高</p>
+                <p id="modalHeight" class="text-base sm:text-lg font-black text-white">-- m</p>
               </div>
-              <div class="border-x border-white/10">
-                <p class="text-[11px] text-white/70">體重</p>
-                <p id="modalWeight" class="text-sm font-bold text-white">-- kg</p>
+              <div class="border-x border-white/20">
+                <p class="text-xs sm:text-sm text-white/85 font-bold">體重</p>
+                <p id="modalWeight" class="text-base sm:text-lg font-black text-white">-- kg</p>
               </div>
               <div>
-                <p class="text-[11px] text-white/70">基礎經驗</p>
-                <p id="modalBaseExp" class="text-sm font-bold text-white">--</p>
+                <p class="text-xs sm:text-sm text-white/85 font-bold">經驗值</p>
+                <p id="modalBaseExp" class="text-base sm:text-lg font-black text-white">--</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 分頁導覽 Tabs -->
-      <div class="flex border-b border-slate-800 bg-slate-900/95 px-4 overflow-x-auto shrink-0">
-        <button onclick="switchTab('overview')" data-tab="overview" class="modal-tab active px-4 py-3 text-sm font-bold border-b-2 border-red-500 text-red-400 whitespace-nowrap">
-          基本與種族值
+      <!-- 大分頁導覽 Tabs -->
+      <div class="grid grid-cols-4 border-b-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
+        <button onclick="switchTab('overview')" data-tab="overview" class="modal-tab active min-h-[52px] px-2 py-3 text-sm sm:text-base font-extrabold border-b-4 border-red-500 dark:border-amber-400 text-red-600 dark:text-amber-300 bg-red-50/70 dark:bg-slate-800/60 transition">
+          📖 介紹能力
         </button>
-        <button onclick="switchTab('evolution')" data-tab="evolution" class="modal-tab px-4 py-3 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
-          進化鏈
+        <button onclick="switchTab('evolution')" data-tab="evolution" class="modal-tab min-h-[52px] px-2 py-3 text-sm sm:text-base font-extrabold border-b-4 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+          🧬 進化路線
         </button>
-        <button onclick="switchTab('abilities')" data-tab="abilities" class="modal-tab px-4 py-3 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
-          特性詳情
+        <button onclick="switchTab('abilities')" data-tab="abilities" class="modal-tab min-h-[52px] px-2 py-3 text-sm sm:text-base font-extrabold border-b-4 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+          ⚡ 特殊特性
         </button>
-        <button onclick="switchTab('moves')" data-tab="moves" class="modal-tab px-4 py-3 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
-          可學招式
+        <button onclick="switchTab('moves')" data-tab="moves" class="modal-tab min-h-[52px] px-2 py-3 text-sm sm:text-base font-extrabold border-b-4 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+          ⚔️ 學習招式
         </button>
       </div>
 
       <!-- 分頁內容區 -->
-      <div class="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6" id="modalBody">
+      <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5 bg-slate-50/60 dark:bg-slate-900" id="modalBody">
         
         <!-- Tab 1: 基本資料、圖鑑描述、種族值與屬性相剋 -->
-        <div id="tab-overview" class="tab-content space-y-6">
-          <!-- 圖鑑介紹與培育資訊 -->
-          <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">圖鑑介紹 (Flavor Text)</h3>
-            <p id="modalFlavorText" class="text-sm text-slate-200 leading-relaxed">讀取中...</p>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-3 border-t border-slate-700/60 text-xs">
-              <div><span class="text-slate-400">捕獲率：</span><strong id="modalCaptureRate" class="text-slate-200">--</strong></div>
-              <div><span class="text-slate-400">基礎親密度：</span><strong id="modalHappiness" class="text-slate-200">--</strong></div>
-              <div><span class="text-slate-400">成長速度：</span><strong id="modalGrowthRate" class="text-slate-200">--</strong></div>
-              <div><span class="text-slate-400">蛋群：</span><strong id="modalEggGroups" class="text-slate-200">--</strong></div>
+        <div id="tab-overview" class="tab-content space-y-5">
+          <!-- 圖鑑介紹 -->
+          <div class="bg-white dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <h3 class="text-sm sm:text-base font-extrabold text-amber-600 dark:text-amber-300 mb-2">📖 圖鑑小故事</h3>
+            <p id="modalFlavorText" class="text-base sm:text-lg text-slate-800 dark:text-white leading-relaxed font-bold">讀取中...</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 text-sm sm:text-base">
+              <div class="bg-slate-100 dark:bg-slate-900/60 p-2.5 rounded-xl"><span class="text-slate-500 dark:text-slate-400 block text-xs font-bold">好抓程度</span><strong id="modalCaptureRate" class="text-slate-900 dark:text-white">--</strong></div>
+              <div class="bg-slate-100 dark:bg-slate-900/60 p-2.5 rounded-xl"><span class="text-slate-500 dark:text-slate-400 block text-xs font-bold">初始親密度</span><strong id="modalHappiness" class="text-slate-900 dark:text-white">--</strong></div>
+              <div class="bg-slate-100 dark:bg-slate-900/60 p-2.5 rounded-xl"><span class="text-slate-500 dark:text-slate-400 block text-xs font-bold">成長速度</span><strong id="modalGrowthRate" class="text-slate-900 dark:text-white">--</strong></div>
+              <div class="bg-slate-100 dark:bg-slate-900/60 p-2.5 rounded-xl"><span class="text-slate-500 dark:text-slate-400 block text-xs font-bold">蛋群分類</span><strong id="modalEggGroups" class="text-slate-900 dark:text-white">--</strong></div>
             </div>
           </div>
 
           <!-- 六維種族值 -->
-          <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">六維種族值 (Base Stats)</h3>
-              <span class="text-xs font-bold text-amber-400">總和 (BST): <span id="modalStatTotal">0</span></span>
+          <div class="bg-white dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-3.5">
+              <h3 class="text-sm sm:text-base font-extrabold text-sky-600 dark:text-sky-300">📊 戰鬥能力值</h3>
+              <span class="text-sm sm:text-base font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-slate-900 px-3 py-1 rounded-xl">總和: <span id="modalStatTotal">0</span></span>
             </div>
-            <div id="modalStatsContainer" class="space-y-2.5"></div>
+            <div id="modalStatsContainer" class="space-y-3"></div>
           </div>
 
           <!-- 屬性防禦相剋分析 -->
-          <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">防禦屬性相剋分析 (Damage Relations)</h3>
-            <div id="modalWeaknessContainer" class="space-y-3 text-xs"></div>
+          <div class="bg-white dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <h3 class="text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-300 mb-3">🛡️ 屬性相剋表（怕什麼屬性？）</h3>
+            <div id="modalWeaknessContainer" class="space-y-4 text-sm sm:text-base"></div>
           </div>
         </div>
 
-        <!-- Tab 2: 進化鏈 (/api/v2/evolution-chain/{id}) -->
+        <!-- Tab 2: 進化鏈 -->
         <div id="tab-evolution" class="tab-content hidden">
-          <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">完整進化鏈 (點擊寶可夢可跳轉檢視)</h3>
-            <div id="evolutionContainer" class="flex flex-wrap items-center justify-center gap-4 min-h-[160px]">
+          <div class="bg-white dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <h3 class="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-300 mb-4 text-center">🧬 進化路線圖（點圖片可以直接切換過去喔！）</h3>
+            <div id="evolutionContainer" class="flex flex-wrap items-center justify-center gap-4 min-h-[180px]">
               載入進化鏈中...
             </div>
           </div>
         </div>
 
-        <!-- Tab 3: 特性 (/api/v2/ability/{id or name}) -->
-        <div id="tab-abilities" class="tab-content hidden space-y-3">
-          <p class="text-xs text-slate-400">以下資料即時串接 <code>/api/v2/ability/{id}</code> 並自動快取：</p>
-          <div id="abilitiesContainer" class="space-y-3"></div>
+        <!-- Tab 3: 特性 -->
+        <div id="tab-abilities" class="tab-content hidden space-y-3.5">
+          <h3 class="text-base sm:text-lg font-extrabold text-purple-600 dark:text-purple-300">⚡ 這隻寶可夢擁有的特殊能力：</h3>
+          <div id="abilitiesContainer" class="space-y-3.5"></div>
         </div>
 
-        <!-- Tab 4: 招式 (/api/v2/move/{id or name}) -->
+        <!-- Tab 4: 招式 -->
         <div id="tab-moves" class="tab-content hidden space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <p class="text-xs text-slate-400">點擊任一招式可即時查詢 <code>/api/v2/move/{id}</code> 詳細數值與效果：</p>
-            <select id="moveMethodFilter" onchange="renderMovesList()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p class="text-sm sm:text-base font-extrabold text-slate-700 dark:text-slate-200">👇 點擊下方任何招式，可以看威力與效果：</p>
+            <select id="moveMethodFilter" onchange="renderMovesList()" class="min-h-[46px] bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-sm sm:text-base font-bold rounded-xl px-3.5 py-2 text-slate-900 dark:text-white">
               <option value="all">全部學習方式</option>
-              <option value="level-up">升級學習 (Level-up)</option>
+              <option value="level-up">升級學會 (Level-up)</option>
               <option value="machine">招式學習器 (TM/HM)</option>
-              <option value="egg">蛋招式 (Egg)</option>
+              <option value="egg">遺傳蛋招式 (Egg)</option>
             </select>
           </div>
 
           <!-- 招式詳情檢視卡片 -->
-          <div id="moveDetailBox" class="hidden bg-indigo-950/50 border border-indigo-500/40 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <span id="moveDetailType" class="px-2.5 py-0.5 rounded-full text-xs font-bold text-white">--</span>
-                <h4 id="moveDetailName" class="text-base font-bold text-white">--</h4>
-                <span id="moveDetailClass" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300">--</span>
+          <div id="moveDetailBox" class="hidden bg-indigo-50 dark:bg-indigo-950/80 border-2 border-indigo-400 rounded-2xl p-4 sm:p-5 shadow-xl">
+            <div class="flex items-start justify-between gap-2 mb-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <span id="moveDetailType" class="px-3 py-1 rounded-xl text-sm font-extrabold text-white">--</span>
+                <h4 id="moveDetailName" class="text-lg sm:text-xl font-black text-slate-900 dark:text-white">--</h4>
+                <span id="moveDetailClass" class="text-sm font-bold px-2.5 py-0.5 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">--</span>
               </div>
-              <button onclick="document.getElementById('moveDetailBox').classList.add('hidden')" class="text-xs text-slate-400 hover:text-white">關閉</button>
+              <button onclick="document.getElementById('moveDetailBox').classList.add('hidden')" class="min-h-[38px] px-3 py-1 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600">
+                關閉 ✕
+              </button>
             </div>
-            <div class="grid grid-cols-3 gap-2 my-3 bg-slate-900/70 rounded-xl p-2.5 text-center text-xs">
-              <div><span class="text-slate-400 block">威力 (Power)</span><strong id="moveDetailPower" class="text-sm text-amber-300">--</strong></div>
-              <div><span class="text-slate-400 block">命中率 (Acc)</span><strong id="moveDetailAcc" class="text-sm text-emerald-300">--</strong></div>
-              <div><span class="text-slate-400 block">PP</span><strong id="moveDetailPP" class="text-sm text-sky-300">--</strong></div>
+            <div class="grid grid-cols-3 gap-2.5 my-3 bg-white dark:bg-slate-900/90 rounded-2xl p-3 text-center border border-indigo-200 dark:border-indigo-800">
+              <div><span class="text-slate-500 dark:text-slate-400 block text-xs sm:text-sm font-bold">攻擊威力</span><strong id="moveDetailPower" class="text-lg sm:text-xl font-black text-amber-600 dark:text-amber-300">--</strong></div>
+              <div><span class="text-slate-500 dark:text-slate-400 block text-xs sm:text-sm font-bold">命中率</span><strong id="moveDetailAcc" class="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-300">--</strong></div>
+              <div><span class="text-slate-500 dark:text-slate-400 block text-xs sm:text-sm font-bold">使用次數 PP</span><strong id="moveDetailPP" class="text-lg sm:text-xl font-black text-sky-600 dark:text-sky-300">--</strong></div>
             </div>
-            <p id="moveDetailDesc" class="text-xs text-slate-200 leading-relaxed">--</p>
+            <p id="moveDetailDesc" class="text-base text-slate-800 dark:text-white leading-relaxed font-bold">--</p>
           </div>
 
-          <!-- 招式標籤清單 -->
-          <div id="movesContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-[340px] overflow-y-auto pr-1"></div>
+          <!-- 大顆好按的招式按鈕清單 -->
+          <div id="movesContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1"></div>
         </div>
 
       </div>
@@ -282,6 +315,45 @@
   </div>
 
   <script>
+    /**
+     * ============================================================================
+     * 0. Light Mode / Dark Mode 主題切換管理
+     * ============================================================================
+     */
+    const THEME_KEY = 'pokedex_theme_mode';
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem(THEME_KEY);
+      // 預設為 dark，若有儲存則依儲存值設定
+      const isDark = savedTheme ? savedTheme === 'dark' : true;
+      applyTheme(isDark);
+    }
+
+    function applyTheme(isDark) {
+      const htmlEl = document.documentElement;
+      const iconEl = document.getElementById('themeIcon');
+      const labelEl = document.getElementById('themeLabel');
+
+      if (isDark) {
+        htmlEl.classList.add('dark');
+        if (iconEl) iconEl.textContent = '🌙';
+        if (labelEl) labelEl.textContent = '深色模式';
+      } else {
+        htmlEl.classList.remove('dark');
+        if (iconEl) iconEl.textContent = '☀️';
+        if (labelEl) labelEl.textContent = '淺色模式';
+      }
+      localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+    }
+
+    function toggleTheme() {
+      const isCurrentlyDark = document.documentElement.classList.contains('dark');
+      applyTheme(!isCurrentlyDark);
+    }
+
+    // 立即套用主題避免畫面閃爍
+    initTheme();
+
     /**
      * ============================================================================
      * 1. 雙層智慧快取層 (Memory Map + localStorage + 併發去重 In-Flight Deduplication)
@@ -301,11 +373,9 @@
       }
 
       get(url) {
-        // 1. 先查記憶體快取
         if (this.memory.has(url)) {
           return this.memory.get(url);
         }
-        // 2. 再查 localStorage
         try {
           const raw = localStorage.getItem(this._getStorageKey(url));
           if (!raw) return null;
@@ -327,7 +397,6 @@
           const payload = JSON.stringify({ timestamp: Date.now(), data });
           localStorage.setItem(this._getStorageKey(url), payload);
         } catch (e) {
-          // 若 localStorage 容量滿了，清理最舊的快取項目後重試
           this._evictOldest();
           try {
             localStorage.setItem(this._getStorageKey(url), JSON.stringify({ timestamp: Date.now(), data }));
@@ -342,7 +411,6 @@
           const k = localStorage.key(i);
           if (k && k.startsWith(this.prefix)) keys.push(k);
         }
-        // 移除前 20% 舊項目
         const removeCount = Math.max(1, Math.floor(keys.length * 0.2));
         keys.slice(0, removeCount).forEach(k => localStorage.removeItem(k));
       }
@@ -351,7 +419,6 @@
         const cached = this.get(url);
         if (cached) return cached;
 
-        // 防止同一時間對相同 URL 發出重複網路請求
         if (this.inFlight.has(url)) {
           return this.inFlight.get(url);
         }
@@ -416,30 +483,38 @@
     };
 
     const STAT_ZH = {
-      hp: 'HP',
-      attack: '攻擊',
-      defense: '防禦',
-      'special-attack': '特攻',
-      'special-defense': '特防',
+      hp: '體力 HP',
+      attack: '攻擊力',
+      defense: '防禦力',
+      'special-attack': '特殊攻擊',
+      'special-defense': '特殊防禦',
       speed: '速度'
     };
 
     const DAMAGE_CLASS_ZH = {
-      physical: '物理',
-      special: '特殊',
-      status: '變化'
+      physical: '物理攻擊',
+      special: '特殊攻擊',
+      status: '變化招式'
     };
 
-    // 常用寶可夢繁中名稱快取對照（載入 species 後亦會自動擴充）
-    const ZH_NAME_MAP = {};
+    const ZH_NAME_MAP = JSON.parse(localStorage.getItem('pokedex_zh_names') || '{}');
 
-    function getLocalizedText(entries, key = 'name', preferLangs = ['zh-Hant', 'zh-Hans', 'ja', 'en']) {
+    function saveZhName(id, zhName) {
+      if (!zhName || ZH_NAME_MAP[id] === zhName) return;
+      ZH_NAME_MAP[id] = zhName;
+      try {
+        localStorage.setItem('pokedex_zh_names', JSON.stringify(ZH_NAME_MAP));
+      } catch (_) {}
+    }
+
+    function getLocalizedText(entries, key = 'name', preferLangs = ['zh-hant', 'zh-hans', 'ja', 'en']) {
       if (!Array.isArray(entries)) return '';
       for (const lang of preferLangs) {
-        const found = entries.find(e => e.language && e.language.name === lang);
+        const target = lang.toLowerCase();
+        const found = entries.find(e => e.language && e.language.name && e.language.name.toLowerCase() === target);
         if (found && found[key]) return found[key].replace(/\f|\n/g, ' ');
       }
-      return entries[0]?.[key] || '';
+      return '';
     }
 
     function getArtworkUrl(id, shiny = false) {
@@ -459,16 +534,17 @@
      * 3. 應用程式狀態與初始化
      * ============================================================================
      */
-    let currentList = [];       // 當前列表 [{ id, name }]
-    let activeType = 'all';     // 當前篩選屬性
+    let currentList = [];
+    let activeType = 'all';
     let currentModalPokemon = null;
     let isShiny = false;
+    let currentTabName = 'overview';
 
     async function initApp() {
+      initTheme();
       initTypeButtons();
       await loadGeneration('1-151');
 
-      // 綁定搜尋與世代切換事件
       document.getElementById('searchInput').addEventListener('input', handleSearchInput);
       document.getElementById('genSelect').addEventListener('change', (e) => {
         activeType = 'all';
@@ -477,13 +553,12 @@
       });
     }
 
-    // 建立 18 種屬性篩選按鈕
     function initTypeButtons() {
       const bar = document.getElementById('typeFilterBar');
       Object.entries(TYPE_ZH).forEach(([en, zh]) => {
         const btn = document.createElement('button');
         btn.dataset.type = en;
-        btn.className = `type-filter-btn px-3 py-1 rounded-full text-xs font-bold text-white/90 bg-slate-800 hover:bg-slate-700 border border-slate-700 shrink-0 transition`;
+        btn.className = `type-filter-btn min-h-[42px] px-4 py-1.5 rounded-2xl text-sm sm:text-base font-extrabold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 border-2 border-slate-300 dark:border-slate-600 shrink-0 transition`;
         btn.textContent = zh;
         btn.onclick = () => filterByType(en);
         bar.appendChild(btn);
@@ -500,15 +575,23 @@
       document.querySelectorAll('.type-filter-btn').forEach(btn => {
         const t = btn.dataset.type;
         if (t === activeType) {
-          btn.className = `type-filter-btn px-3 py-1 rounded-full text-xs font-bold text-white shadow shrink-0 transition ${t === 'all' ? 'bg-red-600' : 'type-' + t}`;
+          btn.className = `type-filter-btn min-h-[42px] px-4 py-1.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg ring-2 ring-slate-900 dark:ring-white shrink-0 active:scale-95 transition ${t === 'all' ? 'bg-red-600' : 'type-' + t}`;
         } else {
-          btn.className = `type-filter-btn px-3 py-1 rounded-full text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 shrink-0 transition`;
+          btn.className = `type-filter-btn min-h-[42px] px-4 py-1.5 rounded-2xl text-sm sm:text-base font-extrabold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 border-2 border-slate-300 dark:border-slate-600 shrink-0 transition`;
         }
       });
     }
 
+    function clearSearchInput() {
+      const input = document.getElementById('searchInput');
+      input.value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      applySearchAndRender();
+    }
+
     function resetFilters() {
       document.getElementById('searchInput').value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
       document.getElementById('genSelect').value = '1-151';
       activeType = 'all';
       updateTypeButtonStyles();
@@ -522,7 +605,7 @@
 
     /**
      * ============================================================================
-     * 4. 列表載入與篩選 (/api/v2/pokemon & /api/v2/type/{id or name})
+     * 4. 列表載入與篩選
      * ============================================================================
      */
     async function loadGeneration(rangeStr) {
@@ -530,8 +613,8 @@
       const offset = start - 1;
       const limit = end - start + 1;
 
-      setStatus(`正在載入 #${String(start).padStart(3, '0')} ~ #${String(end).padStart(3, '0')} 寶可夢...`);
-      renderSkeletons(12);
+      setStatus(`正在準備 #${String(start).padStart(3, '0')} ~ #${String(end).padStart(3, '0')} 寶可夢...`);
+      renderSkeletons(10);
 
       try {
         const data = await cache.fetchJson(`${API_BASE}/pokemon?offset=${offset}&limit=${limit}`);
@@ -548,18 +631,17 @@
     async function filterByType(typeName) {
       activeType = typeName;
       updateTypeButtonStyles();
-      setStatus(`正在查詢【${TYPE_ZH[typeName]}】屬性寶可夢...`);
-      renderSkeletons(12);
+      setStatus(`正在尋找【${TYPE_ZH[typeName]}】屬性的寶可夢...`);
+      renderSkeletons(10);
 
       try {
-        // 串接 /api/v2/type/{id or name}
         const typeData = await cache.fetchJson(`${API_BASE}/type/${typeName}`);
         currentList = typeData.pokemon
           .map(p => ({
             id: extractIdFromUrl(p.pokemon.url),
             name: p.pokemon.name
           }))
-          .filter(p => p.id <= 1025); // 過濾特殊形態 ID
+          .filter(p => p.id <= 1025);
 
         applySearchAndRender();
       } catch (err) {
@@ -568,6 +650,13 @@
     }
 
     function handleSearchInput() {
+      const val = document.getElementById('searchInput').value;
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (val.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
       applySearchAndRender();
     }
 
@@ -591,7 +680,7 @@
         hintBox.classList.add('hidden');
       }
 
-      setStatus(`共顯示 ${filtered.length} 隻寶可夢`);
+      setStatus(`一共有 ${filtered.length} 隻寶可夢`);
       renderPokemonGrid(filtered);
     }
 
@@ -602,10 +691,10 @@
     function renderSkeletons(count) {
       const grid = document.getElementById('pokemonGrid');
       grid.innerHTML = Array.from({ length: count }).map(() => `
-        <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 animate-pulse flex flex-col items-center">
-          <div class="w-24 h-24 bg-slate-700/60 rounded-full mb-3"></div>
-          <div class="h-3 w-12 bg-slate-700 rounded mb-2"></div>
-          <div class="h-4 w-20 bg-slate-700 rounded"></div>
+        <div class="bg-white dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700/60 rounded-3xl p-4 animate-pulse flex flex-col items-center">
+          <div class="w-28 h-28 sm:w-32 sm:h-32 bg-slate-200 dark:bg-slate-700/60 rounded-full mb-3"></div>
+          <div class="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded mb-2"></div>
+          <div class="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
         </div>
       `).join('');
     }
@@ -613,7 +702,7 @@
     function renderPokemonGrid(list) {
       const grid = document.getElementById('pokemonGrid');
       if (list.length === 0) {
-        grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">找不到符合條件的寶可夢</div>`;
+        grid.innerHTML = `<div class="col-span-full text-center py-14 text-lg font-extrabold text-slate-600 dark:text-slate-300">找不到符合的寶可夢喔，試試看別的名字吧！</div>`;
         return;
       }
 
@@ -623,29 +712,27 @@
         return `
           <div onclick="openPokemonDetail(${p.id})"
                data-card-id="${p.id}"
-               class="group bg-slate-800/70 hover:bg-slate-800 border border-slate-700/70 hover:border-slate-500 rounded-2xl p-3.5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl flex flex-col items-center relative overflow-hidden">
-            <span class="self-end text-[11px] font-bold text-slate-400 group-hover:text-slate-200">${paddedId}</span>
-            <div class="w-24 h-24 my-1 flex items-center justify-center">
+               class="group bg-white hover:bg-slate-50 dark:bg-slate-800/85 dark:hover:bg-slate-800 active:scale-95 border-2 border-slate-200 hover:border-red-500 dark:border-slate-700 dark:hover:border-amber-400 rounded-3xl p-4 cursor-pointer transition-all duration-150 shadow-md dark:shadow-lg flex flex-col items-center relative overflow-hidden">
+            <span class="self-end text-xs sm:text-sm font-black px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300">${paddedId}</span>
+            <div class="w-28 h-28 sm:w-32 sm:h-32 my-1.5 flex items-center justify-center bg-slate-100/70 dark:bg-slate-900/40 rounded-full p-2">
               <img loading="lazy" src="${getArtworkUrl(p.id)}" alt="${p.name}"
-                   class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-200"
+                   class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-200 drop-shadow-md"
                    onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png'" />
             </div>
-            <h3 class="text-sm font-bold text-slate-100 capitalize mt-1 text-center card-title">
-              ${zhName ? `${zhName} <span class="text-xs font-normal text-slate-400 block">${p.name}</span>` : p.name}
+            <h3 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white capitalize mt-1.5 text-center card-title leading-snug">
+              ${zhName ? `${zhName} <span class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 block mt-0.5">${p.name}</span>` : p.name}
             </h3>
-            <div class="flex gap-1 mt-2 card-types">
-              <span class="h-4 w-10 bg-slate-700/60 rounded-full"></span>
+            <div class="flex flex-wrap justify-center gap-1.5 mt-2.5 card-types">
+              <span class="h-6 w-14 bg-slate-200 dark:bg-slate-700/60 rounded-full"></span>
             </div>
           </div>
         `;
       }).join('');
 
-      // 漸進式非同步補齊卡片的屬性標籤與繁中名稱（利用快取避免重複請求）
       hydrateVisibleCards(list);
     }
 
     async function hydrateVisibleCards(list) {
-      // 批次處理避免瞬間併發過多連線
       const batchSize = 12;
       for (let i = 0; i < list.length; i += batchSize) {
         const batch = list.slice(i, i + batchSize);
@@ -658,23 +745,21 @@
               cache.fetchJson(`${API_BASE}/pokemon-species/${p.id}`).catch(() => null)
             ]);
 
-            // 更新屬性標籤
             const typesEl = card.querySelector('.card-types');
             if (typesEl && pokeData.types) {
               typesEl.innerHTML = pokeData.types.map(t => {
                 const tName = t.type.name;
-                return `<span class="type-${tName} px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-xs">${TYPE_ZH[tName] || tName}</span>`;
+                return `<span class="type-${tName} px-3 py-1 rounded-xl text-xs sm:text-sm font-extrabold text-white shadow">${TYPE_ZH[tName] || tName}</span>`;
               }).join('');
             }
 
-            // 更新繁體中文名稱
             if (speciesData && speciesData.names) {
-              const zh = getLocalizedText(speciesData.names, 'name', ['zh-Hant', 'zh-Hans']);
+              const zh = getLocalizedText(speciesData.names, 'name', ['zh-hant', 'zh-hans']);
               if (zh) {
-                ZH_NAME_MAP[p.id] = zh;
+                saveZhName(p.id, zh);
                 const titleEl = card.querySelector('.card-title');
                 if (titleEl) {
-                  titleEl.innerHTML = `${zh} <span class="text-xs font-normal text-slate-400 block capitalize">${p.name}</span>`;
+                  titleEl.innerHTML = `${zh} <span class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 block mt-0.5 capitalize">${p.name}</span>`;
                 }
               }
             }
@@ -685,7 +770,7 @@
 
     /**
      * ============================================================================
-     * 5. 寶可夢詳細資料彈窗 (整合所有 6 個 API 端點)
+     * 5. 寶可夢詳細資料彈窗
      * ============================================================================
      */
     async function openPokemonDetail(idOrName) {
@@ -694,34 +779,31 @@
       isShiny = false;
       switchTab('overview');
 
-      document.getElementById('modalNameZh').textContent = '資料載入中...';
+      document.getElementById('modalNameZh').textContent = '資料讀取中...';
       document.getElementById('modalNameSub').textContent = '';
       document.getElementById('modalTypes').innerHTML = '';
 
       try {
-        // 1. 取得基本資料 (/api/v2/pokemon/{id or name})
         const pokemon = await cache.fetchJson(`${API_BASE}/pokemon/${String(idOrName).toLowerCase()}`);
         currentModalPokemon = pokemon;
 
-        // 2. 取得物種資料 (/api/v2/pokemon-species/{id or name})
         const species = await cache.fetchJson(pokemon.species.url).catch(() => null);
 
         renderModalHeader(pokemon, species);
         renderOverviewTab(pokemon, species);
         renderTypeWeaknesses(pokemon.types);
 
-        // 非同步載入進化鏈、特性與招式列表
         if (species && species.evolution_chain) {
           loadEvolutionChain(species.evolution_chain.url);
         } else {
-          document.getElementById('evolutionContainer').innerHTML = '<p class="text-sm text-slate-400">無進化鏈資料</p>';
+          document.getElementById('evolutionContainer').innerHTML = '<p class="text-base font-bold text-slate-500 dark:text-slate-400">這隻寶可夢沒有進化路線喔</p>';
         }
 
         loadAbilities(pokemon.abilities);
         renderMovesList();
 
       } catch (err) {
-        document.getElementById('modalNameZh').textContent = '找不到此寶可夢';
+        document.getElementById('modalNameZh').textContent = '找不到這隻寶可夢';
         document.getElementById('modalNameSub').textContent = `錯誤訊息：${err.message}`;
       }
     }
@@ -731,11 +813,12 @@
     }
 
     function switchTab(tabName) {
+      currentTabName = tabName;
       document.querySelectorAll('.modal-tab').forEach(btn => {
         if (btn.dataset.tab === tabName) {
-          btn.className = 'modal-tab active px-4 py-3 text-sm font-bold border-b-2 border-red-500 text-red-400 whitespace-nowrap';
+          btn.className = 'modal-tab active min-h-[52px] px-2 py-3 text-sm sm:text-base font-extrabold border-b-4 border-red-500 dark:border-amber-400 text-red-600 dark:text-amber-300 bg-red-50/70 dark:bg-slate-800/70 transition';
         } else {
-          btn.className = 'modal-tab px-4 py-3 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap';
+          btn.className = 'modal-tab min-h-[52px] px-2 py-3 text-sm sm:text-base font-extrabold border-b-4 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
         }
       });
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -748,63 +831,59 @@
       const img = document.getElementById('modalArtwork');
       img.src = getArtworkUrl(currentModalPokemon.id, isShiny);
       const btn = document.getElementById('shinyToggleBtn');
-      btn.classList.toggle('bg-amber-500/20', isShiny);
+      btn.classList.toggle('bg-amber-500/40', isShiny);
     }
 
     function renderModalHeader(pokemon, species) {
       const primaryType = pokemon.types[0]?.type.name || 'normal';
       const header = document.getElementById('modalHeader');
-      header.className = `p-5 sm:p-6 pokeball-bg relative flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 type-${primaryType}`;
+      header.className = `p-4 sm:p-6 pokeball-bg relative flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 shrink-0 type-${primaryType}`;
 
       document.getElementById('modalArtwork').src = getArtworkUrl(pokemon.id, false);
       document.getElementById('modalId').textContent = `#${String(pokemon.id).padStart(3, '0')}`;
 
-      // 多語系名稱與分類
-      const zhHant = species ? getLocalizedText(species.names, 'name', ['zh-Hant', 'zh-Hans']) : '';
+      const zhHant = species ? getLocalizedText(species.names, 'name', ['zh-hant', 'zh-hans']) : '';
+      if (zhHant) saveZhName(pokemon.id, zhHant);
       const jaName = species ? getLocalizedText(species.names, 'name', ['ja']) : '';
       const enName = species ? getLocalizedText(species.names, 'name', ['en']) : pokemon.name;
-      const genera = species ? getLocalizedText(species.genera, 'genus', ['zh-Hant', 'zh-Hans', 'ja', 'en']) : '寶可夢';
+      const genera = species ? getLocalizedText(species.genera, 'genus', ['zh-hant', 'zh-hans', 'ja', 'en']) : '寶可夢';
 
-      document.getElementById('modalGenera').textContent = genera;
+      document.getElementById('modalGenera').textContent = genera || '寶可夢';
       document.getElementById('modalNameZh').textContent = zhHant || enName;
       document.getElementById('modalNameSub').textContent = `${enName} ${jaName ? `/ ${jaName}` : ''}`;
 
-      // 屬性標籤
       document.getElementById('modalTypes').innerHTML = pokemon.types.map(t => {
         const tn = t.type.name;
-        return `<span class="px-3 py-1 rounded-full text-xs font-extrabold bg-slate-950/50 text-white border border-white/20 shadow">${TYPE_ZH[tn] || tn}</span>`;
+        return `<span class="px-4 py-1 rounded-2xl text-sm sm:text-base font-black bg-slate-950/60 text-white border-2 border-white/30 shadow">${TYPE_ZH[tn] || tn}</span>`;
       }).join('');
 
-      // 身高、體重、經驗值
       document.getElementById('modalHeight').textContent = `${(pokemon.height / 10).toFixed(1)} m`;
       document.getElementById('modalWeight').textContent = `${(pokemon.weight / 10).toFixed(1)} kg`;
       document.getElementById('modalBaseExp').textContent = pokemon.base_experience ?? '--';
     }
 
     function renderOverviewTab(pokemon, species) {
-      // 圖鑑介紹文字
       const flavor = species
-        ? getLocalizedText(species.flavor_text_entries, 'flavor_text', ['zh-Hant', 'zh-Hans', 'ja', 'en'])
+        ? getLocalizedText(species.flavor_text_entries, 'flavor_text', ['zh-hant', 'zh-hans', 'ja', 'en'])
         : '暫無圖鑑描述。';
-      document.getElementById('modalFlavorText').textContent = flavor;
+      document.getElementById('modalFlavorText').textContent = flavor || '暫無圖鑑描述。';
 
       document.getElementById('modalCaptureRate').textContent = species ? `${species.capture_rate} / 255` : '--';
       document.getElementById('modalHappiness').textContent = species ? species.base_happiness : '--';
       document.getElementById('modalGrowthRate').textContent = species?.growth_rate?.name || '--';
       document.getElementById('modalEggGroups').textContent = species?.egg_groups?.map(g => g.name).join(', ') || '--';
 
-      // 六維種族值
       let total = 0;
       const statsHtml = pokemon.stats.map(s => {
         const val = s.base_stat;
         total += val;
         const pct = Math.min(100, Math.round((val / 255) * 100));
-        const barColor = val >= 110 ? 'bg-emerald-400' : val >= 80 ? 'bg-sky-400' : val >= 55 ? 'bg-amber-400' : 'bg-rose-400';
+        const barColor = val >= 110 ? 'bg-emerald-500 dark:bg-emerald-400' : val >= 80 ? 'bg-sky-500 dark:bg-sky-400' : val >= 55 ? 'bg-amber-500 dark:bg-amber-400' : 'bg-rose-500 dark:bg-rose-400';
         return `
-          <div class="flex items-center gap-3 text-xs">
-            <span class="w-12 font-bold text-slate-300">${STAT_ZH[s.stat.name] || s.stat.name}</span>
-            <span class="w-8 text-right font-mono font-bold text-white">${val}</span>
-            <div class="flex-1 h-2.5 bg-slate-900 rounded-full overflow-hidden">
+          <div class="flex items-center gap-3 text-sm sm:text-base">
+            <span class="w-24 font-extrabold text-slate-700 dark:text-slate-200 shrink-0">${STAT_ZH[s.stat.name] || s.stat.name}</span>
+            <span class="w-10 text-right font-mono font-black text-slate-900 dark:text-white shrink-0">${val}</span>
+            <div class="flex-1 h-4 bg-slate-200 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-300 dark:border-slate-700">
               <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
             </div>
           </div>
@@ -815,10 +894,9 @@
       document.getElementById('modalStatTotal').textContent = total;
     }
 
-    // 計算屬性相剋倍率 (/api/v2/type/{id or name})
     async function renderTypeWeaknesses(types) {
       const container = document.getElementById('modalWeaknessContainer');
-      container.innerHTML = '<span class="text-slate-400">計算屬性相剋中...</span>';
+      container.innerHTML = '<span class="text-slate-600 dark:text-slate-300 font-bold">計算屬性相剋中...</span>';
 
       try {
         const multipliers = {};
@@ -836,50 +914,49 @@
         const resist = Object.entries(multipliers).filter(([, m]) => m > 0 && m < 1).sort((a, b) => a[1] - b[1]);
         const immune = Object.entries(multipliers).filter(([, m]) => m === 0);
 
-        const renderGroup = (title, items, badgeClass) => `
+        const renderGroup = (title, items) => `
           <div>
-            <span class="text-slate-400 block mb-1.5">${title}：</span>
-            <div class="flex flex-wrap gap-1.5">
+            <span class="text-slate-800 dark:text-slate-200 font-extrabold block mb-2">${title}：</span>
+            <div class="flex flex-wrap gap-2">
               ${items.length ? items.map(([t, m]) => `
-                <span class="type-${t} px-2.5 py-0.5 rounded-full text-white font-bold flex items-center gap-1">
-                  ${TYPE_ZH[t]} <span class="bg-black/40 px-1.5 rounded-full text-[10px]">${m}x</span>
+                <span class="type-${t} px-3.5 py-1.5 rounded-2xl text-white font-extrabold flex items-center gap-1.5 shadow">
+                  ${TYPE_ZH[t]} <span class="bg-black/45 px-2 py-0.5 rounded-xl text-xs sm:text-sm">${m}倍</span>
                 </span>
-              `).join('') : '<span class="text-slate-500">無</span>'}
+              `).join('') : '<span class="text-slate-400">無</span>'}
             </div>
           </div>
         `;
 
         container.innerHTML =
-          renderGroup('弱點 (受到加倍傷害)', weak) +
-          renderGroup('抗性 (受到減半傷害)', resist) +
-          (immune.length ? renderGroup('無效 (0x 傷害)', immune) : '');
+          renderGroup('⚠️ 弱點（受到加倍傷害）', weak) +
+          renderGroup('🛡️ 抗性（受到減半傷害）', resist) +
+          (immune.length ? renderGroup('✨ 完全無效（0傷害）', immune) : '');
       } catch (e) {
-        container.innerHTML = `<span class="text-rose-400">無法取得屬性相剋資料</span>`;
+        container.innerHTML = `<span class="text-rose-500">無法取得屬性相剋資料</span>`;
       }
     }
 
     /**
      * ============================================================================
-     * 6. 進化鏈解析 (/api/v2/evolution-chain/{id})
+     * 6. 進化鏈解析
      * ============================================================================
      */
     async function loadEvolutionChain(url) {
       const container = document.getElementById('evolutionContainer');
-      container.innerHTML = '<span class="text-sm text-slate-400">讀取進化鏈中...</span>';
+      container.innerHTML = '<span class="text-base font-bold text-slate-600 dark:text-slate-300">讀取進化路線中...</span>';
 
       try {
         const evoData = await cache.fetchJson(url);
         const stages = [];
 
-        // 廣度優先走訪進化樹，支援伊布等多分支進化
         function traverse(node, depth = 0) {
           if (!stages[depth]) stages[depth] = [];
           const speciesId = extractIdFromUrl(node.species.url);
           const details = node.evolution_details?.[0];
           let condition = '';
           if (details) {
-            if (details.min_level) condition = `Lv.${details.min_level}`;
-            else if (details.item) condition = `使用 ${details.item.name}`;
+            if (details.min_level) condition = `等級 ${details.min_level}`;
+            else if (details.item) condition = `道具: ${details.item.name}`;
             else if (details.min_happiness) condition = `親密度 ≥ ${details.min_happiness}`;
             else if (details.trigger) condition = details.trigger.name;
           }
@@ -892,63 +969,72 @@
 
         traverse(evoData.chain);
 
+        const allEvoNodes = stages.flat();
+        await Promise.all(allEvoNodes.map(async (p) => {
+          if (!ZH_NAME_MAP[p.id]) {
+            const sp = await cache.fetchJson(`${API_BASE}/pokemon-species/${p.id}`).catch(() => null);
+            const zh = sp ? getLocalizedText(sp.names, 'name', ['zh-hant', 'zh-hans']) : '';
+            if (zh) saveZhName(p.id, zh);
+          }
+        }));
+
         container.innerHTML = stages.map((stageList, idx) => `
-          ${idx > 0 ? `<div class="text-slate-500 font-black text-xl">➔</div>` : ''}
+          ${idx > 0 ? `<div class="text-amber-500 dark:text-amber-400 font-black text-2xl sm:text-3xl px-1">➔</div>` : ''}
           <div class="flex flex-col gap-3">
             ${stageList.map(p => `
               <div onclick="openPokemonDetail(${p.id})"
-                   class="bg-slate-900/80 hover:bg-slate-800 border ${p.id === currentModalPokemon.id ? 'border-amber-400' : 'border-slate-700'} rounded-2xl p-3 flex flex-col items-center cursor-pointer transition min-w-[115px]">
-                ${p.condition ? `<span class="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full mb-1">${p.condition}</span>` : ''}
-                <img src="${getArtworkUrl(p.id)}" class="w-16 h-16 object-contain" />
-                <span class="text-xs font-bold text-white mt-1 capitalize">${ZH_NAME_MAP[p.id] || p.name}</span>
-                <span class="text-[10px] text-slate-400">#${String(p.id).padStart(3, '0')}</span>
+                   class="bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 active:scale-95 border-2 ${p.id === currentModalPokemon.id ? 'border-red-500 dark:border-amber-400 ring-2 ring-red-400/40 dark:ring-amber-400/40' : 'border-slate-300 dark:border-slate-600'} rounded-3xl p-4 flex flex-col items-center cursor-pointer transition min-w-[140px] shadow-md">
+                ${p.condition ? `<span class="text-xs sm:text-sm font-extrabold bg-indigo-100 dark:bg-indigo-500/30 text-indigo-700 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-400/50 px-3 py-0.5 rounded-full mb-1.5">${p.condition}</span>` : ''}
+                <img src="${getArtworkUrl(p.id)}" class="w-24 h-24 object-contain" />
+                <span class="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-1.5 capitalize">${ZH_NAME_MAP[p.id] || p.name}</span>
+                ${ZH_NAME_MAP[p.id] ? `<span class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 capitalize">${p.name}</span>` : ''}
+                <span class="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">#${String(p.id).padStart(3, '0')}</span>
               </div>
             `).join('')}
           </div>
         `).join('');
       } catch (e) {
-        container.innerHTML = `<span class="text-sm text-rose-400">載入進化鏈失敗：${e.message}</span>`;
+        container.innerHTML = `<span class="text-base text-rose-500">載入進化鏈失敗：${e.message}</span>`;
       }
     }
 
     /**
      * ============================================================================
-     * 7. 特性詳情 (/api/v2/ability/{id or name})
+     * 7. 特性詳情
      * ============================================================================
      */
     async function loadAbilities(abilities) {
       const container = document.getElementById('abilitiesContainer');
-      container.innerHTML = '<p class="text-sm text-slate-400">載入特性資料中...</p>';
+      container.innerHTML = '<p class="text-base font-bold text-slate-600 dark:text-slate-300">載入特性資料中...</p>';
 
       try {
         const results = await Promise.all(abilities.map(async (item) => {
           const detail = await cache.fetchJson(item.ability.url);
-          const zhName = getLocalizedText(detail.names, 'name', ['zh-Hant', 'zh-Hans', 'ja', 'en']);
-          const flavor = getLocalizedText(detail.flavor_text_entries, 'flavor_text', ['zh-Hant', 'zh-Hans', 'ja', 'en']);
+          const zhName = getLocalizedText(detail.names, 'name', ['zh-hant', 'zh-hans', 'ja', 'en']) || item.ability.name;
+          const flavor = getLocalizedText(detail.flavor_text_entries, 'flavor_text', ['zh-hant', 'zh-hans', 'ja', 'en']);
           const effect = detail.effect_entries.find(e => e.language.name === 'en')?.short_effect || '';
 
           return `
-            <div class="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-4">
-              <div class="flex items-center gap-2 mb-1.5">
-                <h4 class="text-base font-bold text-white">${zhName}</h4>
-                <span class="text-xs text-slate-400 capitalize">(${item.ability.name})</span>
-                ${item.is_hidden ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">隱藏特性</span>' : '<span class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">一般特性</span>'}
+            <div class="bg-white dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <div class="flex flex-wrap items-center gap-2 mb-2">
+                <h4 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white">${zhName}</h4>
+                <span class="text-sm font-bold text-slate-500 dark:text-slate-400 capitalize">(${item.ability.name})</span>
+                ${item.is_hidden ? '<span class="text-xs sm:text-sm font-extrabold px-3 py-0.5 rounded-xl bg-purple-100 dark:bg-purple-500/30 text-purple-700 dark:text-purple-200 border border-purple-300 dark:border-purple-400/50">隱藏特性</span>' : '<span class="text-xs sm:text-sm font-bold px-3 py-0.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">一般特性</span>'}
               </div>
-              <p class="text-sm text-slate-200">${flavor || effect || '暫無說明'}</p>
-              ${effect && flavor ? `<p class="text-xs text-slate-400 mt-1.5">英文效果：${effect}</p>` : ''}
+              <p class="text-base sm:text-lg text-slate-800 dark:text-slate-100 leading-relaxed font-medium">${flavor || effect || '暫無說明'}</p>
             </div>
           `;
         }));
 
         container.innerHTML = results.join('');
       } catch (e) {
-        container.innerHTML = `<p class="text-sm text-rose-400">載入特性失敗：${e.message}</p>`;
+        container.innerHTML = `<p class="text-base text-rose-500">載入特性失敗：${e.message}</p>`;
       }
     }
 
     /**
      * ============================================================================
-     * 8. 招式列表與單一招式查詢 (/api/v2/move/{id or name})
+     * 8. 招式列表與單一招式查詢
      * ============================================================================
      */
     function renderMovesList() {
@@ -963,7 +1049,7 @@
       });
 
       if (filteredMoves.length === 0) {
-        container.innerHTML = '<p class="col-span-full text-sm text-slate-400">此分類下無可學習招式</p>';
+        container.innerHTML = '<p class="col-span-full text-base font-bold text-slate-500 dark:text-slate-400 py-4">這個分類下沒有招式喔</p>';
         return;
       }
 
@@ -972,9 +1058,9 @@
         const lvBadge = latestDetail?.level_learned_at > 0 ? `Lv.${latestDetail.level_learned_at}` : latestDetail?.move_learn_method?.name || '';
         return `
           <button onclick="inspectMove('${m.move.url}')"
-                  class="flex items-center justify-between bg-slate-800/70 hover:bg-slate-700 border border-slate-700/70 rounded-xl px-3 py-2 text-left transition">
-            <span class="text-xs font-bold text-slate-100 capitalize">${m.move.name.replace('-', ' ')}</span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-400">${lvBadge}</span>
+                  class="min-h-[52px] flex items-center justify-between bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 border-2 border-slate-200 hover:border-red-500 dark:border-slate-600 dark:hover:border-amber-400 rounded-2xl px-4 py-3 text-left transition shadow-sm">
+            <span class="text-base font-extrabold text-slate-900 dark:text-white capitalize">${m.move.name.replace('-', ' ')}</span>
+            <span class="text-xs sm:text-sm font-extrabold px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-slate-900 text-amber-800 dark:text-amber-300">${lvBadge}</span>
           </button>
         `;
       }).join('');
@@ -983,19 +1069,19 @@
     async function inspectMove(moveUrl) {
       const box = document.getElementById('moveDetailBox');
       box.classList.remove('hidden');
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       document.getElementById('moveDetailName').textContent = '載入招式資料中...';
       document.getElementById('moveDetailDesc').textContent = '';
 
       try {
-        // 串接 /api/v2/move/{id or name}
         const move = await cache.fetchJson(moveUrl);
-        const zhName = getLocalizedText(move.names, 'name', ['zh-Hant', 'zh-Hans', 'ja', 'en']);
-        const desc = getLocalizedText(move.flavor_text_entries, 'flavor_text', ['zh-Hant', 'zh-Hans', 'ja', 'en']);
+        const zhName = getLocalizedText(move.names, 'name', ['zh-hant', 'zh-hans', 'ja', 'en']) || move.name;
+        const desc = getLocalizedText(move.flavor_text_entries, 'flavor_text', ['zh-hant', 'zh-hans', 'ja', 'en']);
         const typeName = move.type.name;
         const dmgClass = move.damage_class.name;
 
         const typeBadge = document.getElementById('moveDetailType');
-        typeBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold text-white type-${typeName}`;
+        typeBadge.className = `px-3 py-1 rounded-xl text-sm font-extrabold text-white type-${typeName}`;
         typeBadge.textContent = TYPE_ZH[typeName] || typeName;
 
         document.getElementById('moveDetailName').textContent = `${zhName} (${move.name})`;
